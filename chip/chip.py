@@ -1,6 +1,6 @@
 from iconservice import *
 
-TAG = 'Blackjack'
+TAG = 'BLACKJACK_TOKEN'
 
 
 class TokenFallbackInterface(InterfaceScore):
