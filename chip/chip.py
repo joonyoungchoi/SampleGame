@@ -72,14 +72,12 @@ class Chip(IconScoreBase):
 
     @external
     @payable
-    def mint(self, _value):
+    def mint(self):
         """
         This method should be invoked by CA not EOA.
-
-        :param _value: The amount of Chips to mint
         """
         if self.msg.sender.is_contract:
-            self._balances[self.tx.origin] = self._balances[self.tx.origin] + _value
+            self._balances[self.tx.origin] = self._balances[self.tx.origin] + self.msg.value
         else:
             revert("This method should be invoked by CA not EOA")
 
