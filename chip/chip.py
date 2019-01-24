@@ -71,15 +71,16 @@ class Chip(IconScoreBase):
         return self._balances[_owner]
 
     @external
-    @payable
-    def mint(self):
+    def mint(self, amount):
         """
         This method should be invoked by CA not EOA.
+
+        :param amount: the amount of Chips to mint
         """
-        if self.msg.sender.is_contract:
-            self._balances[self.tx.origin] = self._balances[self.tx.origin] + self.msg.value
-        else:
+        if not self.msg.sender.is_contract:
             revert("This method should be invoked by CA not EOA")
+
+        self._balances[self.tx.origin] = self._balances[self.tx.origin] + amount
 
     @external
     def exchange(self, amount: int):
@@ -88,9 +89,7 @@ class Chip(IconScoreBase):
 
         :param amount: the amount of Chips to exchange for icx
         """
-        if self.msg.sender.is_contract:
-            pass
-        else:
+        if not self.msg.sender.is_contract:
             revert("This method should be invoked by CA not EOA")
 
         if self._balances[self.tx.origin] > amount:

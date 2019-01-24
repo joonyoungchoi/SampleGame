@@ -290,5 +290,16 @@ class SampleGame(IconScoreBase):
         self._DDB_game_room[game_room_id] = str(game_room)
 
     @external(readonly=True)
-    def get_result(self) -> str:
+    def get_results(self) -> str:
         return json_dumps(self._get_results())
+
+    @external
+    @payable
+    def mint_chips(self):
+        chip = self.create_interface_score(self._VDB_token_address.get(), ChipInterface)
+        chip.mint(self.msg.value)
+
+    @external
+    def exchange(self, amount: int):
+        chip = self.create_interface_score(self._VDB_token_address.get(), ChipInterface)
+        chip.exchange(amount)
