@@ -1,7 +1,8 @@
 from iconservice import *
 
 from samplegame.deck.deck import Deck
-from samplegame.player.hand.hand import Hand
+from samplegame.gameroom.gameroom import GameRoom
+from samplegame.hand.hand import Hand
 
 TAG = 'BLACKJACK'
 
@@ -33,6 +34,7 @@ class SampleGame(IconScoreBase):
     A main SCORE class for Blackjack
     """
     _GAME_ROOM_PARTICIPANTS = "game_room_participants"
+    _GAME_ROOM_LIST = "game_room_list"
     _GAME_ACTIVE = "game_active"
     _IN_GAME_ROOM = "in_game_room"
     _TOKEN_ADDRESS = "token_address"
@@ -56,6 +58,7 @@ class SampleGame(IconScoreBase):
 
     def __init__(self, db: 'IconScoreDatabase') -> None:
         super().__init__(db)
+        self._db = db
         self._VDB_results = VarDB(self._RESULTS, db, value_type=str)
         self._VDB_token_address = VarDB(self._TOKEN_ADDRESS, db, value_type=Address)
         self._DDB_game_room_participants = DictDB(self._GAME_ROOM_PARTICIPANTS, db, value_type=str)
@@ -66,6 +69,27 @@ class SampleGame(IconScoreBase):
         self._DDB_game_active = DictDB(self._GAME_ACTIVE, db, value_type=bool)
         self._DDB_ready = DictDB(self._READY, db, value_type=bool)
         self._DDB_game_start_time = DictDB(self._GAME_START_TIME, db, value_type=int)
+
+    def get_game_room_list(self):
+        return ArrayDB(self._GAME_ROOM_LIST, self._db, value_type=str)
+
+    @external(readonly=True)
+    def show_game_room_list(self) -> list:
+        response = []
+        game_room_list = self.get_game_room_list()
+
+        for game_room in game_room_list:
+            game_room_id = json_loads(game_room)['game_room_id']
+            creation_time = json_loads(game_room)['creation_time']
+            participants = self._DDB_game_room_participants[game_room_id]
+            prize_per_game = self._DDB_prize_per_game[game_room_id]
+            status = "Full"
+            if len(participants) < 2:
+                status = "Joinable"
+            response.append(f"{game_room_id} : ({len(
+                participants)} / 2). The room is now {status}. Prize : {prize_per_game}. Creation time : {creation_time}")
+
+        return response
 
     @external
     def create_room(self, prize_per_game: int):
@@ -79,6 +103,9 @@ class SampleGame(IconScoreBase):
             revert("Set the prize not to exceed your balance")
 
         # Create the game room & Get in to it & Set the prize_per_game value
+        game_room = GameRoom(self.msg.sender, self.block.height)
+        game_room_list = self.get_game_room_list()
+        game_room_list.put(str(game_room))
         self._DDB_game_room_participants[self.msg.sender] = json_dumps([self.msg.sender])
         self._DDB_in_game_room[self.msg.sender] = self.msg.sender
         self._DDB_prize_per_game[self.msg.sender] = prize_per_game
@@ -93,25 +120,25 @@ class SampleGame(IconScoreBase):
         self._DDB_hand[self.msg.sender] = json_dumps(new_hand)
 
     @external
-    def join_room(self, host_address: Address):
+    def join_room(self, game_room_id: Address):
         # Check whether the game room created by 'host_address' is existent or not
-        if self._DDB_game_room_participants[host_address] == "":
-            revert(f"There is no game room created by {host_address}")
+        if self._DDB_game_room_participants[game_room_id] == "":
+            revert(f"There is no game room created by {game_room_id}")
 
         # Check the chip balance of 'self.msg.sender' before getting in
         chip = self.create_interface_score(self._VDB_token_address.get(), ChipInterface)
-        if chip.balanceOf(self.msg.sender) < self._DDB_prize_per_game[host_address]:
-            revert(f"Not enough Chips to join this game room {host_address}. Require {self._DDB_prize_per_game} chips")
+        if chip.balanceOf(self.msg.sender) < self._DDB_prize_per_game[game_room_id]:
+            revert(f"Not enough Chips to join this game room {game_room_id}. Require {self._DDB_prize_per_game} chips")
 
         # Check the game room's participants. Max : 2
-        participants = json_loads(self._DDB_game_room_participants[host_address])
+        participants = json_loads(self._DDB_game_room_participants[game_room_id])
         if len(participants) > 1:
-            revert(f"Full : Can not join to game room created by {host_address}")
+            revert(f"Full : Can not join to game room created by {game_room_id}")
 
         # Get in to the game room
         participants.append(self.msg.sender)
-        self._DDB_in_game_room[self.msg.sender] = host_address
-        self._DDB_game_room_participants[host_address] = json_dumps(participants)
+        self._DDB_in_game_room[self.msg.sender] = game_room_id
+        self._DDB_game_room_participants[game_room_id] = json_dumps(participants)
 
         # Initialize the deck & hand of participant
         new_deck = Deck()
@@ -138,6 +165,13 @@ class SampleGame(IconScoreBase):
         # Set the in_game_room status of 'self.msg.sender' to None
         self._DDB_in_game_room[self.msg.sender] = None
 
+    @external
+    def get_ready(self):
+        if self._DDB_in_game_room[self.msg.sender] is None:
+            revert("Enter the game room first.")
+        self._DDB_ready[self.msg.sender] = True
+
+    @external
     def game_start(self):
         game_room = self._DDB_in_game_room[self.msg.sender]
         participants = json_loads(self._DDB_game_room_participants[game_room])
@@ -158,6 +192,14 @@ class SampleGame(IconScoreBase):
         # Set ready status of both participants to False after starting the game
         for participant in participants:
             self._DDB_ready[participant] = False
+
+    @external(readonly=True)
+    def show_mine(self) -> str:
+        if self._DDB_in_game_room[self.msg.sender] in None:
+            revert("You are not in any of game")
+
+        hand = self._DDB_hand[self.msg.sender]
+        return str(hand)
 
     @external
     def hit(self):
@@ -222,14 +264,6 @@ class SampleGame(IconScoreBase):
 
     def _game_stop(self, game_room):
         self._DDB_game_active[game_room] = False
-
-    @external(readonly=True)
-    def show_mine(self) -> str:
-        if self._DDB_in_game_room[self.msg.sender] in None:
-            revert("You are not in any of game")
-
-        hand = self._DDB_hand[self.msg.sender]
-        return str(hand)
 
     @external(readonly=True)
     def get_result(self) -> str:
