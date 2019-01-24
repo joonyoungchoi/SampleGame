@@ -85,8 +85,7 @@ class SampleGame(IconScoreBase):
             room_joinable = "Full"
             if len(participants) < 2:
                 room_joinable = "Joinable"
-            response.append(f"{game_room_id} : ({len(
-                participants)} / 2). The room is now {room_joinable}. Prize : {prize_per_game}. Creation time : {creation_time}")
+            response.append(f"{game_room_id} : ({len(participants)} / 2). The room is now {room_joinable}. Prize : {prize_per_game}. Creation time : {creation_time}")
 
         return response
 
