@@ -179,10 +179,13 @@ class SampleGame(IconScoreBase):
         self._DDB_in_game_room[self.msg.sender] = None
 
     @external
-    def get_ready(self):
+    def toggle_ready(self):
         if self._DDB_in_game_room[self.msg.sender] is None:
             revert("Enter the game room first.")
-        self._DDB_ready[self.msg.sender] = True
+        if self._DDB_ready[self.msg.sender]:
+            self._DDB_ready[self.msg.sender] = False
+        else:
+            self._DDB_ready[self.msg.sender] = True
 
     @external
     def game_start(self):
