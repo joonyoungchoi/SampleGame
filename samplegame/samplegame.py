@@ -44,6 +44,18 @@ class SampleGame(IconScoreBase):
     _READY = "ready"
     _GAME_START_TIME = "game_start_time"
 
+    @eventlog(indexed=1)
+    def Calculate(self, game_room_id: Address):
+        pass
+
+    @eventlog()
+    def Hit(self, _from_address: Address, game_room_id: Address):
+        pass
+
+    @eventlog()
+    def Fix(self,  _from_address: Address, game_room_id: Address):
+        pass
+
     def on_install(self, token_address: Address) -> None:
         super().on_install()
         if token_address.is_contract:
@@ -257,10 +269,12 @@ class SampleGame(IconScoreBase):
         hand.adjust_for_ace()
         self._DDB_deck[self.msg.sender] = str(deck)
         self._DDB_hand[self.msg.sender] = str(hand)
+        self.Hit(self.msg.sender, game_room_id)
 
         # Check whether the fix status of all participants are True. And, If participant 'hand.value' exceeds 21, finalize the game. & Game must be finalized.
         if self._check_participants_fix(game_room_id) or hand.value > 21 or self.block.height - self._DDB_game_start_time[game_room_id] > 60:
             self.calculate(game_room_id)
+            self.Calculate(game_room_id)
 
     def _check_participants_fix(self, game_room_id: Address) -> bool:
         game_room_dict = self._DDB_game_room[game_room_id]
@@ -278,12 +292,18 @@ class SampleGame(IconScoreBase):
 
     @external
     def fix(self):
+        game_room_id = self._DDB_in_game_room[self.msg.sender]
         hand_dict = json_loads(self._DDB_hand[self.msg.sender])
         hand = Hand(hand_dict['cards'], hand_dict['value'], hand_dict['aces'], hand_dict['fix'])
+
         hand.fix = True
         self._DDB_hand[self.msg.sender] = str(hand)
+        self.Fix(self.msg.sender, game_room_id)
 
-    @external
+        if self._check_participants_fix(game_room_id) or self.block.height - self._DDB_game_start_time[game_room_id] > 60:
+            self.calculate(game_room_id)
+            self.Calculate(game_room_id)
+
     def calculate(self, game_room_id: Address = None):
         chip = self.create_interface_score(self._VDB_token_address.get(), ChipInterface)
         if game_room_id is None:
