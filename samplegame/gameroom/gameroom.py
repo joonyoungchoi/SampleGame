@@ -3,8 +3,9 @@ from iconservice import json_dumps, Address
 
 class GameRoom:
 
-    def __init__(self, _host: Address, _game_room_id: Address, _creation_time: int, _prize_per_game: int, _participants: list = None, _active: bool = False):
-        self.host = _host
+    def __init__(self, _owner: Address, _game_room_id: Address, _creation_time: int, _prize_per_game: int, _participants: list = None,
+                 _active: bool = False):
+        self.owner = _owner
         self.game_room_id = _game_room_id
         self.creation_time = _creation_time
         self.prize_per_game = _prize_per_game
@@ -28,8 +29,8 @@ class GameRoom:
 
     def __str__(self):
         response = {
-            'host': self.host,
-            'game_room_id': self.game_room_id,
+            'owner': f'{self.owner}',
+            'game_room_id': f'{self.game_room_id}',
             'creation_time': self.creation_time,
             'prize_per_game': self.prize_per_game,
             'participants': self.participants,
