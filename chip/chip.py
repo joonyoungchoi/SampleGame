@@ -18,6 +18,10 @@ class Chip(IconScoreBase):
     def Transfer(self, _from: Address, _to: Address, _value: int, _data: bytes):
         pass
 
+    @eventlog(indexed=2)
+    def Burn(self, _from: Address, _value: int):
+        pass
+
     def on_install(self, decimals: int) -> None:
         super().on_install()
 
@@ -94,6 +98,7 @@ class Chip(IconScoreBase):
 
         if self._balances[self.tx.origin] > amount:
             self._burn(self.tx.origin, amount)
+            self.Burn(self.tx.origin, amount)
         else:
             revert(f"You don't have enough chips to burn. Your balance: {self._balances[self.tx.origin]}")
 
