@@ -17,7 +17,7 @@ class ChipInterface(InterfaceScore):
         pass
 
     @interface
-    def exchange(self, amount: int):
+    def burn(self, amount: int):
         pass
 
     @interface
@@ -340,4 +340,5 @@ class SampleGame(IconScoreBase):
     @external
     def exchange(self, amount: int):
         chip = self.create_interface_score(self._VDB_token_address.get(), ChipInterface)
-        chip.exchange(amount)
+        chip.burn(amount)
+        self.icx.send(self.msg.sender, amount)

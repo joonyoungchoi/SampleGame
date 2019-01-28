@@ -83,7 +83,7 @@ class Chip(IconScoreBase):
         self._balances[self.tx.origin] = self._balances[self.tx.origin] + amount
 
     @external
-    def exchange(self, amount: int):
+    def burn(self, amount: int):
         """
         This method should be invoked by CA not EOA.
 
@@ -93,8 +93,9 @@ class Chip(IconScoreBase):
             revert("This method should be invoked by CA not EOA")
 
         if self._balances[self.tx.origin] > amount:
-            self._balances[self.tx.origin] = self._balances[self.tx.origin] - amount
-            self.icx.send(self.tx.origin, amount)
+            self._burn(self.tx.origin, amount)
+        else:
+            revert(f"You don't have enough chips to burn. Your balance: {self._balances[self.tx.origin]}")
 
     @external
     def transfer(self, _to: Address, _value: int, _data: bytes = None):
@@ -109,3 +110,6 @@ class Chip(IconScoreBase):
         # Emits an event log `Transfer`
         self.Transfer(self.tx.origin, _to, _value, _data)
         Logger.debug(f'Transfer({self.tx.origin},{_to},{_value},{_data})', TAG)
+
+    def _burn(self, address: Address, amount: int):
+        self._balances[address] = self._balances[address] - amount
