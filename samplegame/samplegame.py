@@ -123,6 +123,10 @@ class SampleGame(IconScoreBase):
         if game_room_id not in self._get_game_room_list():
             revert(f"There is no game room created by {game_room_id}")
 
+        # Check the participant is already joined to another game_room
+        if self._DDB_in_game_room[self.msg.sender] is not None:
+            revert(f"You already joined to another game room : {self._DDB_in_game_room[self.msg.sender]}")
+
         game_room_dict = json_loads(self._DDB_game_room[game_room_id])
         game_room = GameRoom(game_room_dict['host'], game_room_dict['game_room_id'], game_room_dict['creation_time'],
                              game_room_dict['prize_per_game'], game_room_dict['participants'], game_room_dict['active'])
