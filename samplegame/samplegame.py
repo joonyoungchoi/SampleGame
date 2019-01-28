@@ -119,7 +119,7 @@ class SampleGame(IconScoreBase):
 
     @external
     def join_room(self, game_room_id: Address):
-        # Check whether the game room created by 'host_address' is existent or not
+        # Check whether the game room with game_room_id is existent or not
         if game_room_id not in self._get_game_room_list():
             revert(f"There is no game room created by {game_room_id}")
 
@@ -128,7 +128,7 @@ class SampleGame(IconScoreBase):
             revert(f"You already joined to another game room : {self._DDB_in_game_room[self.msg.sender]}")
 
         game_room_dict = json_loads(self._DDB_game_room[game_room_id])
-        game_room = GameRoom(game_room_dict['host'], game_room_dict['game_room_id'], game_room_dict['creation_time'],
+        game_room = GameRoom(game_room_dict['owner'], game_room_dict['game_room_id'], game_room_dict['creation_time'],
                              game_room_dict['prize_per_game'], game_room_dict['participants'], game_room_dict['active'])
 
         # Check the chip balance of 'self.msg.sender' before getting in
@@ -161,14 +161,14 @@ class SampleGame(IconScoreBase):
         # Retrieve the game room ID & Check the game room status
         game_room_id_to_escape = self._DDB_in_game_room[self.msg.sender]
         game_room_to_escape_dict = json_loads(self._DDB_game_room[game_room_id_to_escape])
-        game_room_to_escape = GameRoom(game_room_to_escape_dict['host'], game_room_to_escape_dict['game_room_id'],
+        game_room_to_escape = GameRoom(game_room_to_escape_dict['owner'], game_room_to_escape_dict['game_room_id'],
                                        game_room_to_escape_dict['creation_time'], game_room_to_escape_dict['prize_per_game'],
                                        game_room_to_escape_dict['participants'], game_room_to_escape_dict['active'])
         if game_room_to_escape.active:
             revert("The game is not finalized yet.")
 
         # Escape from the game room
-        if game_room_to_escape.host == self.msg.sender and len(game_room_to_escape.participants) == 1:
+        if game_room_to_escape.owner == self.msg.sender and len(game_room_to_escape.participants) == 1:
             game_room_to_escape.escape(self.msg.sender)
             self._crash_room(game_room_id_to_escape)
         else:
@@ -188,9 +188,13 @@ class SampleGame(IconScoreBase):
     def game_start(self):
         game_room_id = self._DDB_in_game_room[self.msg.sender]
         game_room_dict = json_loads(self._DDB_game_room[game_room_id])
-        game_room = GameRoom(game_room_dict['host'], game_room_dict['game_room_id'], game_room_dict['creation_time'],
+        game_room = GameRoom(game_room_dict['owner'], game_room_dict['game_room_id'], game_room_dict['creation_time'],
                              game_room_dict['prize_per_game'], game_room_dict['participants'], game_room_dict['active'])
         participants = game_room.participants
+
+        # Check the 'self.msg.sender' == game_room.owner
+        if not self.msg.sender == game_room.owner:
+            revert("Only owner of game room can start the game")
 
         # Check the number of participants
         if len(participants) < 2:
@@ -222,7 +226,7 @@ class SampleGame(IconScoreBase):
     def hit(self):
         game_room_id = self._DDB_in_game_room[self.msg.sender]
         game_room_dict = self._DDB_game_room[game_room_id]
-        game_room = GameRoom(game_room_dict['host'], game_room_dict['game_room_id'], game_room_dict['creation_time'],
+        game_room = GameRoom(game_room_dict['owner'], game_room_dict['game_room_id'], game_room_dict['creation_time'],
                              game_room_dict['prize_per_game'], game_room_dict['participants'], game_room_dict['active'])
 
         # Check whether the game is in active mode or not
@@ -259,7 +263,7 @@ class SampleGame(IconScoreBase):
 
         # Calculate the result
         game_room_dict = json_loads(self._DDB_game_room[game_room_id])
-        game_room = GameRoom(game_room_dict['host'], game_room_dict['game_room_id'], game_room_dict['creation_time'],
+        game_room = GameRoom(game_room_dict['owner'], game_room_dict['game_room_id'], game_room_dict['creation_time'],
                              game_room_dict['prize_per_game'], game_room_dict['participants'], game_room_dict['active'])
         participants = game_room.participants
         participant_gen = (participant for participant in participants)
@@ -284,7 +288,7 @@ class SampleGame(IconScoreBase):
 
     def _game_stop(self, game_room_id):
         game_room_dict = json_loads(self._DDB_game_room[game_room_id])
-        game_room = GameRoom(game_room_dict['host'], game_room_dict['game_room_id'], game_room_dict['creation_time'],
+        game_room = GameRoom(game_room_dict['owner'], game_room_dict['game_room_id'], game_room_dict['creation_time'],
                              game_room_dict['prize_per_game'], game_room_dict['participants'], game_room_dict['active'])
         game_room.game_stop()
         self._DDB_game_room[game_room_id] = str(game_room)
