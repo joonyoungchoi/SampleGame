@@ -237,20 +237,48 @@ class SampleGame(IconScoreBase):
         deck_dict = json_loads(self._DDB_deck[self.msg.sender])
         deck = Deck(deck_dict['deck'])
         hand_dict = json_loads(self._DDB_hand[self.msg.sender])
-        hand = Hand(hand_dict['cards'], hand_dict['value'], hand_dict['aces'])
+        hand = Hand(hand_dict['cards'], hand_dict['value'], hand_dict['aces'], hand_dict['fix'])
 
-        # Revert if the participant already has 3 cards.
-        if len(hand.cards) > 2:
-            revert(f"You can have cards up to 3")
+        # Check if the participant has already fixed hands
+        if hand.fix:
+            revert('You already fixed your hand')
+
+        # Revert if the participant already has 5 cards.
+        if len(hand.cards) > 4:
+            revert(f"You can have cards up to 5")
+
+        if len(hand.cards) == 4:
+            hand.fix = True
 
         hand.add_card(deck.deal())
         hand.adjust_for_ace()
         self._DDB_deck[self.msg.sender] = str(deck)
         self._DDB_hand[self.msg.sender] = str(hand)
 
-        # If 'hand.value' exceeds 21, finalize the game. & Game must be finalized.
-        if hand.value > 21 or self.block.height - self._DDB_game_start_time[game_room_id] > 30:
+        # Check whether the fix status of all participants are True. And, If participant 'hand.value' exceeds 21, finalize the game. & Game must be finalized.
+        if self._check_participants_fix(game_room_id) or hand.value > 21 or self.block.height - self._DDB_game_start_time[game_room_id] > 60:
             self.calculate(game_room_id)
+
+    def _check_participants_fix(self, game_room_id: Address) -> bool:
+        game_room_dict = self._DDB_game_room[game_room_id]
+        game_room = GameRoom(game_room_dict['owner'], game_room_dict['game_room_id'], game_room_dict['creation_time'],
+                             game_room_dict['prize_per_game'], game_room_dict['participants'], game_room_dict['active'])
+        participants = game_room.participants
+
+        for participant in participants:
+            hand_dict = json_loads(self._DDB_hand[participant])
+            hand = Hand(hand_dict['cards'], hand_dict['value'], hand_dict['aces'], hand_dict['fix'])
+            if not hand.fix:
+                return False
+
+        return True
+
+    @external
+    def fix(self):
+        hand_dict = json_loads(self._DDB_hand[self.msg.sender])
+        hand = Hand(hand_dict['cards'], hand_dict['value'], hand_dict['aces'], hand_dict['fix'])
+        hand.fix = True
+        self._DDB_hand[self.msg.sender] = str(hand)
 
     @external
     def calculate(self, game_room_id: Address = None):
@@ -269,22 +297,25 @@ class SampleGame(IconScoreBase):
         participant_gen = (participant for participant in participants)
         first_participant = next(participant_gen)
         first_hand_dict = json_loads(self._DDB_hand[first_participant])
-        first_hand = Hand(first_hand_dict['cards'], first_hand_dict['value'], first_hand_dict['aces'])
+        first_hand = Hand(first_hand_dict['cards'], first_hand_dict['value'], first_hand_dict['aces'], first_hand_dict['fix'])
         second_participant = next(participant_gen)
         second_hand_dict = json_loads(self._DDB_hand[second_participant])
-        second_hand = Hand(second_hand_dict['cards'], second_hand_dict['value'], second_hand_dict['aces'])
+        second_hand = Hand(second_hand_dict['cards'], second_hand_dict['value'], second_hand_dict['aces'], second_hand_dict['fix'])
 
         results = self._get_results()
-        if first_hand.value > second_hand.value:
+        if first_hand.value > 21 or second_hand.value > 21:
+            chip.transfer(first_participant, game_room.prize_per_game * 2) if second_hand.value>21 else chip.transfer(second_participant, game_room.prize_per_game * 2)
+            results.put(f"{first_participant} wins against {second_participant}.")
+        elif first_hand.value > second_hand.value:
             chip.transfer(first_participant, game_room.prize_per_game * 2)
-            results.put(f"{first_participant} wins against {second_participant}. {self.block.height}")
+            results.put(f"{first_participant} wins against {second_participant}.")
         elif first_hand.value < second_hand.value:
             chip.transfer(second_participant, game_room.prize_per_game * 2)
-            results.put(f"{second_participant} wins against {first_participant}. {self.block.height}")
+            results.put(f"{second_participant} wins against {first_participant}.")
         else:
             chip.transfer(first_participant, game_room.prize_per_game)
             chip.transfer(second_participant, game_room.prize_per_game)
-            results.put(f"Draw!! {first_participant}, {second_participant}. {self.block.height}")
+            results.put(f"Draw!! {first_participant}, {second_participant}.")
 
     def _game_stop(self, game_room_id):
         game_room_dict = json_loads(self._DDB_game_room[game_room_id])

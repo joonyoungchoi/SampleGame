@@ -8,7 +8,7 @@ values = {'Two': 2, 'Three': 3, 'Four': 4, 'Five': 5, 'Six': 6, 'Seven': 7, 'Eig
 
 class Hand:
 
-    def __init__(self, cards: list = None, value: int = 0, aces: int = 0):
+    def __init__(self, cards: list = None, value: int = 0, aces: int = 0, fix: bool = False):
         if cards is None:
             self.cards = []
         else:
@@ -16,6 +16,7 @@ class Hand:
 
         self.value = value  # start with zero value
         self.aces = aces  # add an attribute to keep track of aces
+        self.fix = False
 
     def add_card(self, card=Card('Hearts', 'Two')):
         self.cards.append(card)
@@ -32,6 +33,7 @@ class Hand:
         response = {
             'cards': self.cards,
             'value': self.value,
-            'aces': self.aces
+            'aces': self.aces,
+            'fix': self.fix
         }
         return json_dumps(response)
