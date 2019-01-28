@@ -16,7 +16,7 @@ class Hand:
 
         self.value = value  # start with zero value
         self.aces = aces  # add an attribute to keep track of aces
-        self.fix = False
+        self.fix = fix
 
     def add_card(self, card=Card('Hearts', 'Two')):
         self.cards.append(card)
