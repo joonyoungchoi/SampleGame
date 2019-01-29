@@ -1,8 +1,8 @@
 from iconservice import *
 
-from samplegame.deck.deck import Deck
-from samplegame.gameroom.gameroom import GameRoom
-from samplegame.hand.hand import Hand
+from .deck.deck import Deck
+from .gameroom.gameroom import GameRoom
+from .hand.hand import Hand
 
 TAG = 'BLACKJACK'
 
@@ -94,8 +94,8 @@ class SampleGame(IconScoreBase):
             creation_time = json_loads(game_room)['creation_time']
             prize_per_game = json_loads(game_room)['prize_per_game']
             participants = json_loads(game_room)['participants']
-            room_joinable = "Full" if len(participants) < 2 else "Joinable"
-            response.append(f"{game_room_id} : ({len(participants)} / 2). The room is now {room_joinable}. Prize : {prize_per_game}. Creation time : {creation_time}")
+            room_has_vacant_seat = "Full" if len(participants) < 2 else "Room has a vacant seat"
+            response.append(f"{game_room_id} : ({len(participants)} / 2). The room is now {room_has_vacant_seat}. Prize : {prize_per_game}. Creation time : {creation_time}")
 
         return response
 
@@ -265,7 +265,7 @@ class SampleGame(IconScoreBase):
         if len(hand.cards) == 4:
             hand.fix = True
 
-        hand.add_card(deck.deal())
+        hand.add_card(deck.deal(self.block.height, self.msg.sender))
         hand.adjust_for_ace()
         self._DDB_deck[self.msg.sender] = str(deck)
         self._DDB_hand[self.msg.sender] = str(hand)
