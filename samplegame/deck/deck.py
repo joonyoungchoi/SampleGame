@@ -1,6 +1,6 @@
-from iconservice import json_dumps, sha3_256
+from iconservice import json_dumps, sha3_256, Address
 
-from samplegame.deck.card.card import Card
+from .card.card import Card
 
 suits = ('Hearts', 'Diamonds', 'Spades', 'Clubs')
 ranks = ('Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Jack', 'Queen', 'King', 'Ace')
@@ -17,8 +17,9 @@ class Deck:
                 for rank in ranks:
                     self.deck.append(Card(suit, rank))
 
-    def deal(self):
-        random_index = int.from_bytes(bytes(sha3_256("some unique things".encode())), 'big') % len(self.deck)
+    def deal(self, block_height: int, sender_address: Address):
+        deal_input = str(block_height) + str(sender_address)
+        random_index = int.from_bytes(bytes(sha3_256(deal_input.encode())), 'big') % len(self.deck)
         single_card = self.deck.pop(random_index)
         return single_card
 
