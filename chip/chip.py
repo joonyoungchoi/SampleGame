@@ -22,7 +22,7 @@ class Chip(IconScoreBase):
     def Burn(self, _from: Address, _value: int):
         pass
 
-    def on_install(self, decimals: int) -> None:
+    def on_install(self, decimals: int = 0) -> None:
         super().on_install()
 
         self._total_supply.set(0)
@@ -75,7 +75,7 @@ class Chip(IconScoreBase):
         return self._balances[_owner]
 
     @external
-    def mint(self, amount):
+    def mint(self, amount: int):
         """
         This method should be invoked by CA not EOA.
 
@@ -84,21 +84,21 @@ class Chip(IconScoreBase):
         if not self.msg.sender.is_contract:
             revert("This method should be invoked by CA not EOA")
 
-        self._balances[self.tx.origin] = self._balances[self.tx.origin] + amount
+        self._balances[self.tx.origin] = self._balances[self.tx.origin] + amount * (10 ** self._decimals.get())
 
     @external
     def burn(self, amount: int):
         """
         This method should be invoked by CA not EOA.
 
-        :param amount: the amount of Chips to exchange for icx
+        :param amount: the icx amount for Chips to exchange
         """
         if not self.msg.sender.is_contract:
             revert("This method should be invoked by CA not EOA")
 
         if self._balances[self.tx.origin] > amount:
-            self._burn(self.tx.origin, amount)
-            self.Burn(self.tx.origin, amount)
+            self._burn(self.tx.origin, amount * (10 ** self._decimals.get()))
+            self.Burn(self.tx.origin, amount * (10 ** self._decimals.get()))
         else:
             revert(f"You don't have enough chips to burn. Your balance: {self._balances[self.tx.origin]}")
 
