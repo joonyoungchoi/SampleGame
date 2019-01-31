@@ -94,8 +94,8 @@ class SampleGame(IconScoreBase):
             creation_time = json_loads(game_room)['creation_time']
             prize_per_game = json_loads(game_room)['prize_per_game']
             participants = json_loads(game_room)['participants']
-            room_has_vacant_seat = "Full" if len(participants) < 2 else "Room has a vacant seat"
-            response.append(f"{game_room_id} : ({len(participants)} / 2). The room is now {room_has_vacant_seat}. Prize : {prize_per_game}. Creation time : {creation_time}")
+            room_has_vacant_seat = "is Full" if len(participants) > 1 else "has a vacant seat"
+            response.append(f"{game_room_id} : ({len(participants)} / 2). The room {room_has_vacant_seat}. Prize : {prize_per_game}. Creation time : {creation_time}")
 
         return response
 
@@ -131,23 +131,25 @@ class SampleGame(IconScoreBase):
 
     @external
     def join_room(self, game_room_id: Address):
+        super().__init__(self._db)
         # Check whether the game room with game_room_id is existent or not
-        if game_room_id not in self._get_game_room_list():
-            revert(f"There is no game room created by {game_room_id}")
+
+        if self._DDB_game_room[game_room_id] is None:
+            revert(f"There is no game room which has equivalent id to {game_room_id}")
 
         # Check the participant is already joined to another game_room
         if self._DDB_in_game_room[self.msg.sender] is not None:
             revert(f"You already joined to another game room : {self._DDB_in_game_room[self.msg.sender]}")
 
         game_room_dict = json_loads(self._DDB_game_room[game_room_id])
-        game_room = GameRoom(game_room_dict['owner'], game_room_dict['game_room_id'], game_room_dict['creation_time'],
+        game_room = GameRoom(Address.from_string(game_room_dict['owner']), Address.from_string(game_room_dict['game_room_id']), game_room_dict['creation_time'],
                              game_room_dict['prize_per_game'], game_room_dict['participants'], game_room_dict['active'])
+        game_room_list = self._get_game_room_list()
 
         # Check the chip balance of 'self.msg.sender' before getting in
         chip = self.create_interface_score(self._VDB_token_address.get(), ChipInterface)
         if chip.balanceOf(self.msg.sender) < game_room.prize_per_game:
-            revert(
-                f"Not enough Chips to join this game room {game_room_id}. Require {game_room.prize_per_game} chips")
+            revert(f"Not enough Chips to join this game room {game_room_id}. Require {game_room.prize_per_game} chips")
 
         # Check the game room's participants. Max : 2
         if len(game_room.participants) > 1:
@@ -157,6 +159,10 @@ class SampleGame(IconScoreBase):
         game_room.join(self.msg.sender)
         self._DDB_in_game_room[self.msg.sender] = game_room_id
         self._DDB_game_room[game_room_id] = str(game_room)
+
+        game_room_index_gen = (index for index in range(len(game_room_list)) if game_room.game_room_id == Address.from_string(json_loads(game_room_list[index])['game_room_id']))
+        index = next(game_room_index_gen)
+        game_room_list[index] = str(game_room)
 
         # Initialize the deck & hand of participant
         new_deck = Deck()
@@ -173,7 +179,7 @@ class SampleGame(IconScoreBase):
         # Retrieve the game room ID & Check the game room status
         game_room_id_to_escape = self._DDB_in_game_room[self.msg.sender]
         game_room_to_escape_dict = json_loads(self._DDB_game_room[game_room_id_to_escape])
-        game_room_to_escape = GameRoom(game_room_to_escape_dict['owner'], game_room_to_escape_dict['game_room_id'],
+        game_room_to_escape = GameRoom(Address.from_string(game_room_to_escape_dict['owner']), Address.from_string(game_room_to_escape_dict['game_room_id']),
                                        game_room_to_escape_dict['creation_time'], game_room_to_escape_dict['prize_per_game'],
                                        game_room_to_escape_dict['participants'], game_room_to_escape_dict['active'])
         if game_room_to_escape.active:
@@ -188,7 +194,11 @@ class SampleGame(IconScoreBase):
             self._DDB_game_room[game_room_id_to_escape] = str(game_room_to_escape)
 
         # Set the in_game_room status of 'self.msg.sender' to None
-        self._DDB_in_game_room[self.msg.sender] = None
+        game_room_list = self._get_game_room_list()
+        game_room_index_gen = (index for index in range(len(game_room_list)) if game_room_to_escape.game_room_id == Address.from_string(json_loads(game_room_list[index])['game_room_id']))
+        index = next(game_room_index_gen)
+        game_room_list[index] = str(game_room_to_escape)
+        self._DDB_in_game_room.remove(self.msg.sender)
 
     @external
     def toggle_ready(self):
@@ -203,7 +213,7 @@ class SampleGame(IconScoreBase):
     def game_start(self):
         game_room_id = self._DDB_in_game_room[self.msg.sender]
         game_room_dict = json_loads(self._DDB_game_room[game_room_id])
-        game_room = GameRoom(game_room_dict['owner'], game_room_dict['game_room_id'], game_room_dict['creation_time'],
+        game_room = GameRoom(Address.from_string(game_room_dict['owner']), Address.from_string(game_room_dict['game_room_id']), game_room_dict['creation_time'],
                              game_room_dict['prize_per_game'], game_room_dict['participants'], game_room_dict['active'])
         participants = game_room.participants
 
@@ -217,7 +227,7 @@ class SampleGame(IconScoreBase):
 
         # Make sure that all the participants are ready
         for participant in participants:
-            if not self._DDB_ready[participant]:
+            if not self._DDB_ready[Address.from_string(participant)]:
                 revert(f"{participant} is not ready to play game")
 
         # Game start
@@ -227,11 +237,11 @@ class SampleGame(IconScoreBase):
 
         # Set ready status of both participants to False after starting the game
         for participant in participants:
-            self._DDB_ready[participant] = False
+            self._DDB_ready[Address.from_string(participant)] = False
 
     @external(readonly=True)
     def show_mine(self) -> str:
-        if self._DDB_in_game_room[self.msg.sender] in None:
+        if self._DDB_in_game_room[self.msg.sender] is None:
             revert("You are not in game")
 
         hand = self._DDB_hand[self.msg.sender]
@@ -240,8 +250,8 @@ class SampleGame(IconScoreBase):
     @external
     def hit(self):
         game_room_id = self._DDB_in_game_room[self.msg.sender]
-        game_room_dict = self._DDB_game_room[game_room_id]
-        game_room = GameRoom(game_room_dict['owner'], game_room_dict['game_room_id'], game_room_dict['creation_time'],
+        game_room_dict = json_loads(self._DDB_game_room[game_room_id])
+        game_room = GameRoom(Address.from_string(game_room_dict['owner']), Address.from_string(game_room_dict['game_room_id']), game_room_dict['creation_time'],
                              game_room_dict['prize_per_game'], game_room_dict['participants'], game_room_dict['active'])
 
         # Check whether the game is in active mode or not
@@ -277,13 +287,13 @@ class SampleGame(IconScoreBase):
             self.Calculate(game_room_id)
 
     def _check_participants_fix(self, game_room_id: Address) -> bool:
-        game_room_dict = self._DDB_game_room[game_room_id]
-        game_room = GameRoom(game_room_dict['owner'], game_room_dict['game_room_id'], game_room_dict['creation_time'],
+        game_room_dict = json_loads(self._DDB_game_room[game_room_id])
+        game_room = GameRoom(Address.from_string(game_room_dict['owner']), Address.from_string(game_room_dict['game_room_id']), game_room_dict['creation_time'],
                              game_room_dict['prize_per_game'], game_room_dict['participants'], game_room_dict['active'])
         participants = game_room.participants
 
         for participant in participants:
-            hand_dict = json_loads(self._DDB_hand[participant])
+            hand_dict = json_loads(self._DDB_hand[Address.from_string(participant)])
             hand = Hand(hand_dict['cards'], hand_dict['value'], hand_dict['aces'], hand_dict['fix'])
             if not hand.fix:
                 return False
@@ -306,50 +316,48 @@ class SampleGame(IconScoreBase):
 
     def calculate(self, game_room_id: Address = None):
         chip = self.create_interface_score(self._VDB_token_address.get(), ChipInterface)
-        if game_room_id is None:
-            game_room_id = self._DDB_in_game_room[self.msg.sender]
 
         # Finalize the game
         self._game_stop(game_room_id)
 
         # Calculate the result
         game_room_dict = json_loads(self._DDB_game_room[game_room_id])
-        game_room = GameRoom(game_room_dict['owner'], game_room_dict['game_room_id'], game_room_dict['creation_time'],
+        game_room = GameRoom(Address.from_string(game_room_dict['owner']), Address.from_string(game_room_dict['game_room_id']), game_room_dict['creation_time'],
                              game_room_dict['prize_per_game'], game_room_dict['participants'], game_room_dict['active'])
         participants = game_room.participants
         participant_gen = (participant for participant in participants)
         first_participant = next(participant_gen)
-        first_hand_dict = json_loads(self._DDB_hand[first_participant])
+        first_hand_dict = json_loads(self._DDB_hand[Address.from_string(first_participant)])
         first_hand = Hand(first_hand_dict['cards'], first_hand_dict['value'], first_hand_dict['aces'], first_hand_dict['fix'])
         second_participant = next(participant_gen)
-        second_hand_dict = json_loads(self._DDB_hand[second_participant])
+        second_hand_dict = json_loads(self._DDB_hand[Address.from_string(second_participant)])
         second_hand = Hand(second_hand_dict['cards'], second_hand_dict['value'], second_hand_dict['aces'], second_hand_dict['fix'])
 
         results = self._get_results()
         if first_hand.value > 21 or second_hand.value > 21:
-            chip.transfer(first_participant, game_room.prize_per_game * 2) if second_hand.value>21 else chip.transfer(second_participant, game_room.prize_per_game * 2)
+            chip.transfer(Address.from_string(first_participant), game_room.prize_per_game * 2) if second_hand.value>21 else chip.transfer(Address.from_string(second_participant), game_room.prize_per_game * 2)
             results.put(f"{first_participant} wins against {second_participant}.")
         elif first_hand.value > second_hand.value:
-            chip.transfer(first_participant, game_room.prize_per_game * 2)
+            chip.transfer(Address.from_string(first_participant), game_room.prize_per_game * 2)
             results.put(f"{first_participant} wins against {second_participant}.")
         elif first_hand.value < second_hand.value:
-            chip.transfer(second_participant, game_room.prize_per_game * 2)
+            chip.transfer(Address.from_string(second_participant), game_room.prize_per_game * 2)
             results.put(f"{second_participant} wins against {first_participant}.")
         else:
-            chip.transfer(first_participant, game_room.prize_per_game)
-            chip.transfer(second_participant, game_room.prize_per_game)
+            chip.transfer(Address.from_string(first_participant), game_room.prize_per_game)
+            chip.transfer(Address.from_string(second_participant), game_room.prize_per_game)
             results.put(f"Draw!! {first_participant}, {second_participant}.")
 
     def _game_stop(self, game_room_id):
         game_room_dict = json_loads(self._DDB_game_room[game_room_id])
-        game_room = GameRoom(game_room_dict['owner'], game_room_dict['game_room_id'], game_room_dict['creation_time'],
+        game_room = GameRoom(Address.from_string(game_room_dict['owner']), Address.from_string(game_room_dict['game_room_id']), game_room_dict['creation_time'],
                              game_room_dict['prize_per_game'], game_room_dict['participants'], game_room_dict['active'])
         game_room.game_stop()
         self._DDB_game_room[game_room_id] = str(game_room)
 
     @external(readonly=True)
     def get_results(self) -> str:
-        return json_dumps(self._get_results())
+        return json_dumps(list(self._get_results()))
 
     @external
     @payable
