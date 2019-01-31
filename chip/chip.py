@@ -91,7 +91,7 @@ class Chip(IconScoreBase):
         """
         This method should be invoked by CA not EOA.
 
-        :param amount: the icx amount for Chips to exchange
+        :param amount: the equivalent icx amount to Chips to burn
         """
         if not self.msg.sender.is_contract:
             revert("This method should be invoked by CA not EOA")
