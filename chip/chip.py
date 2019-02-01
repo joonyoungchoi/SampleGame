@@ -19,6 +19,10 @@ class Chip(IconScoreBase):
         pass
 
     @eventlog(indexed=2)
+    def Bet(self, _from: Address, _to: Address, _value: int):
+        pass
+
+    @eventlog(indexed=2)
     def Burn(self, _from: Address, _value: int):
         pass
 
@@ -106,15 +110,25 @@ class Chip(IconScoreBase):
     def transfer(self, _to: Address, _value: int, _data: bytes = None):
         if _value < 0:
             revert('Transferring value cannot be less than zero')
-        if self._balances[self.tx.origin] < _value:
+        # if self._balances[self.tx.origin] < _value:
+        if self._balances[self.msg.sender] < _value:
             revert("Out of balance")
 
-        self._balances[self.tx.origin] = self._balances[self.tx.origin] - _value
+        # self._balances[self.tx.origin] = self._balances[self.tx.origin] - _value
+        self._balances[self.msg.sender] = self._balances[self.msg.sender] - _value
         self._balances[_to] = self._balances[_to] + _value
 
         # Emits an event log `Transfer`
-        self.Transfer(self.tx.origin, _to, _value, _data)
-        Logger.debug(f'Transfer({self.tx.origin},{_to},{_value},{_data})', TAG)
+        # self.Transfer(self.tx.origin, _to, _value, _data)
+        self.Transfer(self.msg.sender, _to, _value, _data)
 
     def _burn(self, address: Address, amount: int):
         self._balances[address] = self._balances[address] - amount
+
+    @external
+    def bet(self, _from: Address, _to: Address, _value: int):
+        if not self.msg.sender.is_contract:
+            revert("This method should be invoked by CA not EOA.")
+        self._balances[_from] = self._balances[_from] - _value
+        self._balances[_to] = self._balances[_to] + _value
+        self.Bet(_from, _to, _value)

@@ -28,6 +28,10 @@ class ChipInterface(InterfaceScore):
     def transfer(self, _to: Address, _value: int, _data: bytes = None):
         pass
 
+    @interface
+    def bet(self, _from: Address, _to: Address, _value: int):
+        pass
+
 
 class SampleGame(IconScoreBase):
     """
@@ -84,6 +88,10 @@ class SampleGame(IconScoreBase):
     def _get_results(self):
         return ArrayDB(self._RESULTS, self._db, value_type=str)
 
+    def _bet(self, _from: Address, amount: int):
+        chip = self.create_interface_score(self._VDB_token_address.get(), ChipInterface)
+        chip.bet(_from, self.address, amount)
+
     @external(readonly=True)
     def balanceOf(self) -> int:
         chip = self.create_interface_score(self._VDB_token_address.get(), ChipInterface)
@@ -132,6 +140,13 @@ class SampleGame(IconScoreBase):
 
     def _crash_room(self, game_room_id: Address):
         game_room_to_crash_dict = json_loads(self._DDB_game_room[game_room_id])
+
+        game_room_to_crash = GameRoom(Address.from_string(game_room_to_crash_dict['owner']), Address.from_string(game_room_to_crash_dict['game_room_id']), game_room_to_crash_dict['creation_time'],
+                             game_room_to_crash_dict['prize_per_game'], game_room_to_crash_dict['participants'], game_room_to_crash_dict['active'])
+        participants_to_escape = game_room_to_crash.participants
+        for partcipant in participants_to_escape:
+            self._DDB_in_game_room.remove(Address.from_string(partcipant))
+
         self._DDB_game_room.remove(game_room_id)
         game_room_list = list(self._get_game_room_list())
         game_room_list.remove(json_dumps(game_room_to_crash_dict))
@@ -219,8 +234,7 @@ class SampleGame(IconScoreBase):
 
         self._DDB_in_game_room.remove(self.msg.sender)
 
-    @external
-    def ban(self, game_room_id: Address, participant_to_ban: Address):
+    def _ban(self, game_room_id: Address, participant_to_ban: Address):
         # 방장인 경우 참여인원 모두 나가고 게임방 삭제
         # 게임 룸 정보에서 삭제
         # 게임룸 리스트에 변경사항 반영
@@ -230,8 +244,8 @@ class SampleGame(IconScoreBase):
         if game_room.owner == participant_to_ban:
             # 방 폭파
             for participant in game_room.participants:
-                game_room.escape(Address.from_string(participant))
                 self._DDB_in_game_room.remove(Address.from_string(participant))
+                game_room.escape(Address.from_string(participant))
             self._crash_room(game_room_id)
         else:
             game_room.escape(participant_to_ban)
@@ -245,7 +259,8 @@ class SampleGame(IconScoreBase):
                 game_room_list[index] = str(game_room)
             except StopIteration:
                 pass
-        pass
+
+
 
     @external
     def toggle_ready(self):
@@ -263,6 +278,9 @@ class SampleGame(IconScoreBase):
         game_room = GameRoom(Address.from_string(game_room_dict['owner']), Address.from_string(game_room_dict['game_room_id']), game_room_dict['creation_time'],
                              game_room_dict['prize_per_game'], game_room_dict['participants'], game_room_dict['active'])
         participants = game_room.participants
+
+        for participant in participants:
+            self._bet(_from=Address.from_string(participant), amount=game_room.prize_per_game)
 
         # Check the 'self.msg.sender' == game_room.owner
         if not self.msg.sender == game_room.owner:
@@ -289,7 +307,12 @@ class SampleGame(IconScoreBase):
     @external(readonly=True)
     def show_mine(self) -> str:
         if self._DDB_in_game_room[self.msg.sender] is None:
-            revert("You are not in game")
+            return "You are not in game"
+
+        game_room_id = self._DDB_in_game_room[self.msg.sender]
+        game_room = json_loads(self._DDB_game_room[game_room_id])
+        if not game_room['active']:
+            return "The game is not active"
 
         hand = self._DDB_hand[self.msg.sender]
         return hand
@@ -297,6 +320,9 @@ class SampleGame(IconScoreBase):
     @external
     def hit(self):
         game_room_id = self._DDB_in_game_room[self.msg.sender]
+        if game_room_id is None:
+            revert("You are not in game")
+
         game_room_dict = json_loads(self._DDB_game_room[game_room_id])
         game_room = GameRoom(Address.from_string(game_room_dict['owner']), Address.from_string(game_room_dict['game_room_id']), game_room_dict['creation_time'],
                              game_room_dict['prize_per_game'], game_room_dict['participants'], game_room_dict['active'])
@@ -314,10 +340,6 @@ class SampleGame(IconScoreBase):
         # Check if the participant has already fixed hands
         if hand.fix:
             revert('You already fixed your hand')
-
-        # Revert if the participant already has 5 cards.
-        if len(hand.cards) > 4:
-            revert(f"You can have cards up to 5")
 
         if len(hand.cards) == 4:
             hand.fix = True
@@ -386,17 +408,17 @@ class SampleGame(IconScoreBase):
             results.put(f"{first_participant} wins against {second_participant}.") if second_hand.value > 21 else results.put(f"{second_participant} wins against {first_participant}.")
             loser = first_participant if first_hand.value > 21 else second_participant
             if game_room.prize_per_game > chip.balanceOf(Address.from_string(loser)):
-                self.ban(game_room_id, Address.from_string(loser))
+                self._ban(game_room_id, Address.from_string(loser))
         elif first_hand.value > second_hand.value:
             chip.transfer(Address.from_string(first_participant), game_room.prize_per_game * 2)
             results.put(f"{first_participant} wins against {second_participant}.")
             if game_room.prize_per_game > chip.balanceOf(Address.from_string(second_participant)):
-                self.ban(game_room_id, Address.from_string(second_participant))
+                self._ban(game_room_id, Address.from_string(second_participant))
         elif first_hand.value < second_hand.value:
             chip.transfer(Address.from_string(second_participant), game_room.prize_per_game * 2)
             results.put(f"{second_participant} wins against {first_participant}.")
             if game_room.prize_per_game > chip.balanceOf(Address.from_string(first_participant)):
-                self.ban(game_room_id, Address.from_string(first_participant))
+                self._ban(game_room_id, Address.from_string(first_participant))
         else:
             chip.transfer(Address.from_string(first_participant), game_room.prize_per_game)
             chip.transfer(Address.from_string(second_participant), game_room.prize_per_game)
