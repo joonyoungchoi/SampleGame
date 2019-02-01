@@ -215,9 +215,12 @@ class SampleGame(IconScoreBase):
             revert("The game is not finalized yet.")
 
         # Escape from the game room
-        if game_room_to_escape.owner == self.msg.sender and len(game_room_to_escape.participants) == 1:
-            game_room_to_escape.escape(self.msg.sender)
-            self._crash_room(game_room_id_to_escape)
+        if game_room_to_escape.owner == self.msg.sender:
+            if len(game_room_to_escape.participants) == 1:
+                game_room_to_escape.escape(self.msg.sender)
+                self._crash_room(game_room_id_to_escape)
+            else:
+                revert("Owner can not escape from room which has the other participant")
         else:
             game_room_to_escape.escape(self.msg.sender)
             self._DDB_game_room[game_room_id_to_escape] = str(game_room_to_escape)
@@ -260,7 +263,10 @@ class SampleGame(IconScoreBase):
             except StopIteration:
                 pass
 
-
+    @external(readonly=True)
+    def get_chip_balance(self) -> int:
+        chip = self.create_interface_score(self._VDB_token_address.get(), ChipInterface)
+        return chip.balanceOf(self.msg.sender)
 
     @external
     def toggle_ready(self):
