@@ -1,10 +1,9 @@
-from iconservice import json_dumps, Address
+from iconservice import *
 
 
 class GameRoom:
 
-    def __init__(self, _owner: Address, _game_room_id: Address, _creation_time: int, _prize_per_game: int, _participants: list = None,
-                 _active: bool = False):
+    def __init__(self, _owner: Address, _game_room_id: Address, _creation_time: int, _prize_per_game: int, _participants: list = None, _active: bool = False):
         self.owner = _owner
         self.game_room_id = _game_room_id
         self.creation_time = _creation_time
@@ -15,11 +14,11 @@ class GameRoom:
             self.participants = _participants
         self.active = _active
 
-    def join(self, _participant):
-        self.participants.append(_participant)
+    def join(self, _participant: Address):
+        self.participants.append(str(_participant))
 
-    def escape(self, _participant_to_escape):
-        self.participants.remove(_participant_to_escape)
+    def escape(self, _participant_to_escape: Address):
+        self.participants.remove(str(_participant_to_escape))
 
     def game_start(self):
         self.active = True

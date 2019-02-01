@@ -1,6 +1,6 @@
-from iconservice import json_dumps, sha3_256, Address
+from iconservice import *
 
-from .card.card import Card
+from ..card.card import Card
 
 suits = ('Hearts', 'Diamonds', 'Spades', 'Clubs')
 ranks = ('Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Jack', 'Queen', 'King', 'Ace')
@@ -15,7 +15,7 @@ class Deck:
             self.deck = []
             for suit in suits:
                 for rank in ranks:
-                    self.deck.append(Card(suit, rank))
+                    self.deck.append(str(Card(suit, rank)))
 
     def deal(self, block_height: int, sender_address: Address):
         deal_input = str(block_height) + str(sender_address)

@@ -1,6 +1,6 @@
-from iconservice import json_dumps
+from iconservice import *
 
-from ..deck.card.card import Card
+from ..card.card import Card
 
 values = {'Two': 2, 'Three': 3, 'Four': 4, 'Five': 5, 'Six': 6, 'Seven': 7, 'Eight': 8,
           'Nine': 9, 'Ten': 10, 'Jack': 10, 'Queen': 10, 'King': 10, 'Ace': 11}
@@ -18,10 +18,10 @@ class Hand:
         self.aces = aces  # add an attribute to keep track of aces
         self.fix = fix
 
-    def add_card(self, card=Card('Hearts', 'Two')):
+    def add_card(self, card):
         self.cards.append(card)
-        self.value += values[card.rank]
-        if card.rank == 'Ace':
+        self.value += values[json_loads(card)['rank']]
+        if json_loads(card)['rank'] == 'Ace':
             self.aces += 1  # add to self.aces
 
     def adjust_for_ace(self):
