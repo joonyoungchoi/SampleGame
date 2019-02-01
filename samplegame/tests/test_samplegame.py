@@ -8,7 +8,7 @@ from iconsdk.builder.call_builder import CallBuilder
 from iconsdk.libs.in_memory_zip import gen_deploy_data_content
 from iconsdk.signed_transaction import SignedTransaction
 from iconsdk.wallet.wallet import KeyWallet
-from iconservice import Address
+from iconservice import Address, json_loads
 
 from tbears.libs.icon_integrate_test import IconIntegrateTestBase, SCORE_INSTALL_ADDRESS
 
@@ -25,8 +25,8 @@ class TestSampleGame(IconIntegrateTestBase):
         self.icon_service = None
 
         self.test1_wallet = self._test1
-        self.test2_wallet = self._wallet_array.pop()
-        self.test3_wallet = self._wallet_array.pop()
+        self.test2_wallet = self._wallet_array[0]
+        self.test3_wallet = self._wallet_array[1]
         wallet_list = [self.test1_wallet, self.test2_wallet, self.test3_wallet]
 
         # install SCORE
@@ -274,140 +274,193 @@ class TestSampleGame(IconIntegrateTestBase):
         self.assertEqual(self._sample_game_score_address, tx_result['scoreAddress'])
 
     def test_scenario1(self):
-        # result_show_game_room_list = self._show_game_room_list(self.test1_wallet)
-        # print(result_show_game_room_list)
-
         tx_result_create_room = self._create_room(self.test1_wallet)
-
         self.assertTrue('status' in tx_result_create_room)
         self.assertEqual(1, tx_result_create_room['status'])
-
-        # result_show_game_room_list = self._show_game_room_list(self.test1_wallet)
-        # print(result_show_game_room_list)
 
         tx_result_create_room = self._create_room(self.test2_wallet)
-
         self.assertTrue('status' in tx_result_create_room)
         self.assertEqual(1, tx_result_create_room['status'])
 
-        # result_show_game_room_list = self._show_game_room_list(self.test1_wallet)
-        # print(result_show_game_room_list)
-
         tx_result_create_room = self._create_room(self.test1_wallet)
-
         self.assertTrue('status' in tx_result_create_room)
         self.assertEqual(0, tx_result_create_room['status'])
 
     def test2_scenario2(self):
 
         tx_result_create_room = self._create_room(self.test1_wallet)
-
         self.assertTrue('status' in tx_result_create_room)
         self.assertEqual(1, tx_result_create_room['status'])
 
         result_show_game_room_list = self._show_game_room_list(self.test1_wallet)
-
         self.assertEqual(1, len(result_show_game_room_list))
 
         tx_result_join_room = self._join_room(self.test2_wallet, self.test1_wallet.get_address())
-
         self.assertTrue('status' in tx_result_join_room)
         self.assertEqual(1, tx_result_join_room['status'])
 
         tx_result_join_room = self._join_room(self.test3_wallet, self.test1_wallet.get_address())
-
         self.assertTrue('status' in tx_result_join_room)
         self.assertEqual(0, tx_result_join_room['status'])
 
         tx_result_escape_room = self._escape(self.test1_wallet)
-
         self.assertTrue('status' in tx_result_escape_room)
         self.assertEqual(0, tx_result_escape_room['status'])
 
         tx_result_escape_room = self._escape(self.test2_wallet)
-
         self.assertTrue('status' in tx_result_escape_room)
         self.assertEqual(1, tx_result_escape_room['status'])
 
         tx_result_join_room = self._join_room(self.test3_wallet, self.test1_wallet.get_address())
-
         self.assertTrue('status' in tx_result_join_room)
         self.assertEqual(1, tx_result_join_room['status'])
 
         tx_result_escape_room = self._escape(self.test3_wallet)
-
         self.assertTrue('status' in tx_result_escape_room)
         self.assertEqual(1, tx_result_escape_room['status'])
 
         result_show_game_room_list = self._show_game_room_list(self.test1_wallet)
-
         self.assertEqual(1, len(result_show_game_room_list))
 
         tx_result_escape_room = self._escape(self.test1_wallet)
-
         self.assertTrue('status' in tx_result_escape_room)
         self.assertEqual(1, tx_result_escape_room['status'])
 
         result_show_game_room_list = self._show_game_room_list(self.test1_wallet)
-
         self.assertEqual(0, len(result_show_game_room_list))
 
     def test_scenario3(self):
-        pass
-        # # Sends the call request
-        # result_show_game_room_list = self._show_game_room_list(self.test1_wallet)
-        # print(result_show_game_room_list)
-        #
-        # tx_result_escape_room = self._escape(self.test1_wallet)
-        # # print(tx_result_escape_room)
-        #
-        # result_show_game_room_list = self._show_game_room_list(self.test1_wallet)
-        # print(result_show_game_room_list)
-        #
-        # tx_result_join_room = self._join_room(self.test1_wallet, self.test3_wallet.get_address())
-        #
-        # result_show_game_room_list = self._show_game_room_list(self.test1_wallet)
-        # print(result_show_game_room_list)
+        self._create_room(self.test1_wallet)
+        self._join_room(self.test2_wallet, self.test1_wallet.get_address())
 
-        # tx_result_toggle_ready = self._toggle_ready(self.test1_wallet)
-        # print(tx_result_toggle_ready)
-        #
-        # tx_result_toggle_ready = self._toggle_ready(self.test3_wallet)
-        # print(tx_result_toggle_ready)
-        #
-        # tx_result_game_start = self._game_start(self.test1_wallet)
-        # print(tx_result_game_start)
-        #
-        # for integer in range(5):
-        #     tx_result_hit = self._hit(self.test1_wallet)
-        #
-        #     result_show_mine = self._show_mine(self.test1_wallet)
-        #     print(result_show_mine)
-        #
-        #     tx_result_hit = self._hit(self.test3_wallet)
-        #
-        #     result_show_mine = self._show_mine(self.test3_wallet)
-        #     print(result_show_mine)
-        #
-        # result_get_balance = self._get_chip_balance(self.test1_wallet)
-        # print(result_get_balance)
-        #
-        # result_get_balance = self._get_chip_balance(self.test3_wallet)
-        # print(result_get_balance)
-        #
-        # result_show_game_room_list = self._show_game_room_list(self.test1_wallet)
-        # print(result_show_game_room_list)
+        tx_result_toggle_ready = self._toggle_ready(self.test1_wallet)
+        self.assertTrue('status' in tx_result_toggle_ready)
+        self.assertEqual(1, tx_result_toggle_ready['status'])
 
+        tx_result_game_start = self._game_start(self.test1_wallet)
+        self.assertTrue('status' in tx_result_game_start)
+        self.assertEqual(0, tx_result_game_start['status'])
 
+        tx_result_toggle_ready = self._toggle_ready(self.test2_wallet)
+        self.assertTrue('status' in tx_result_toggle_ready)
+        self.assertEqual(1, tx_result_toggle_ready['status'])
 
+        tx_result_hit = self._hit(self.test1_wallet)
+        self.assertTrue('status' in tx_result_hit)
+        self.assertEqual(0, tx_result_hit['status'])
+
+        tx_result_game_start = self._game_start(self.test2_wallet)
+        self.assertTrue('status' in tx_result_game_start)
+        self.assertEqual(0, tx_result_game_start['status'])
+
+        tx_result_game_start = self._game_start(self.test1_wallet)
+        self.assertTrue('status' in tx_result_game_start)
+        self.assertEqual(1, tx_result_game_start['status'])
+
+        tx_result_escape = self._escape(self.test1_wallet)
+        self.assertTrue('status' in tx_result_escape)
+        self.assertEqual(0, tx_result_escape['status'])
+
+        tx_result_hit = self._hit(self.test1_wallet)
+        self.assertTrue('status' in tx_result_hit)
+        self.assertEqual(1, tx_result_hit['status'])
+
+        result_show_mine = self._show_mine(self.test1_wallet)
+        print(result_show_mine)
+
+        tx_result_hit = self._hit(self.test2_wallet)
+        self.assertTrue('status' in tx_result_hit)
+        self.assertEqual(1, tx_result_hit['status'])
+
+        result_show_mine = self._show_mine(self.test2_wallet)
+        print(result_show_mine)
+
+        tx_result_fix = self._fix(self.test1_wallet)
+        self.assertTrue('status' in tx_result_fix)
+        self.assertEqual(1, tx_result_fix['status'])
+
+        tx_result_fix = self._fix(self.test2_wallet)
+        self.assertTrue('status' in tx_result_fix)
+        self.assertEqual(1, tx_result_fix['status'])
+
+        result_get_results = self._get_results(self.test1_wallet)
+        print(result_get_results)
+
+        result_show_game_room_list = self._show_game_room_list(self.test1_wallet)
+        print(result_show_game_room_list)
+
+    def test_scenario4(self):
+        self._create_room(self.test1_wallet)
+        self._join_room(self.test2_wallet, self.test1_wallet.get_address())
+
+        tx_result_toggle_ready = self._toggle_ready(self.test1_wallet)
+        self.assertTrue('status' in tx_result_toggle_ready)
+        self.assertEqual(1, tx_result_toggle_ready['status'])
+
+        tx_result_game_start = self._game_start(self.test1_wallet)
+        self.assertTrue('status' in tx_result_game_start)
+        self.assertEqual(0, tx_result_game_start['status'])
+
+        tx_result_toggle_ready = self._toggle_ready(self.test2_wallet)
+        self.assertTrue('status' in tx_result_toggle_ready)
+        self.assertEqual(1, tx_result_toggle_ready['status'])
+
+        tx_result_hit = self._hit(self.test1_wallet)
+        self.assertTrue('status' in tx_result_hit)
+        self.assertEqual(0, tx_result_hit['status'])
+
+        tx_result_game_start = self._game_start(self.test2_wallet)
+        self.assertTrue('status' in tx_result_game_start)
+        self.assertEqual(0, tx_result_game_start['status'])
+
+        tx_result_game_start = self._game_start(self.test1_wallet)
+        self.assertTrue('status' in tx_result_game_start)
+        self.assertEqual(1, tx_result_game_start['status'])
+
+        tx_result_escape = self._escape(self.test1_wallet)
+        self.assertTrue('status' in tx_result_escape)
+        self.assertEqual(0, tx_result_escape['status'])
+
+        for _ in range(5):
+            tx_result_hit = self._hit(self.test1_wallet)
+            self.assertTrue('status' in tx_result_hit)
+            self.assertEqual(1, tx_result_hit['status'])
+
+            result_show_mine = self._show_mine(self.test1_wallet)
+            if json_loads(result_show_mine)['value'] > 21:
+                break
+
+            tx_result_hit = self._hit(self.test2_wallet)
+            self.assertTrue('status' in tx_result_hit)
+            self.assertEqual(1, tx_result_hit['status'])
+
+            result_show_mine = self._show_mine(self.test2_wallet)
+            if json_loads(result_show_mine)['value'] > 21:
+                break
+
+        result_get_results = self._get_results(self.test2_wallet)
+        print(result_get_results)
+
+        result_show_game_room_list = self._show_game_room_list(self.test2_wallet)
+        print(result_show_game_room_list)
 
     def test_scenario5(self):
         tx_result_exchange = self._exchange(self.test1_wallet, 10)
-
         self.assertTrue('status' in tx_result_exchange)
         self.assertEqual(1, tx_result_exchange['status'])
 
         tx_result_exchange = self._exchange(self.test1_wallet, 10)
-
         self.assertTrue('status' in tx_result_exchange)
         self.assertEqual(0, tx_result_exchange['status'])
+
+        tx_result_create_room = self._create_room(self.test1_wallet)
+        self.assertTrue('status' in tx_result_create_room)
+        self.assertEqual(0, tx_result_create_room['status'])
+
+        tx_result_create_room = self._create_room(self.test2_wallet)
+        self.assertTrue('status' in tx_result_create_room)
+        self.assertEqual(1, tx_result_create_room['status'])
+
+        tx_result_join_room = self._join_room(self.test1_wallet, self.test2_wallet.get_address())
+        self.assertTrue('status' in tx_result_join_room)
+        self.assertEqual(0, tx_result_join_room['status'])

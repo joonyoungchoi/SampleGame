@@ -312,14 +312,6 @@ class SampleGame(IconScoreBase):
 
     @external(readonly=True)
     def show_mine(self) -> str:
-        if self._DDB_in_game_room[self.msg.sender] is None:
-            return "You are not in game"
-
-        game_room_id = self._DDB_in_game_room[self.msg.sender]
-        game_room = json_loads(self._DDB_game_room[game_room_id])
-        if not game_room['active']:
-            return "The game is not active"
-
         hand = self._DDB_hand[self.msg.sender]
         return hand
 
@@ -350,7 +342,7 @@ class SampleGame(IconScoreBase):
         if len(hand.cards) == 4:
             hand.fix = True
 
-        hand.add_card(deck.deal(self.block.height, self.msg.sender))
+        hand.add_card(deck.deal(self.block.timestamp, self.msg.sender))
         hand.adjust_for_ace()
         self._DDB_deck[self.msg.sender] = str(deck)
         self._DDB_hand[self.msg.sender] = str(hand)

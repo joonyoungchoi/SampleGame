@@ -19,7 +19,6 @@ class Hand:
         self.fix = fix
 
     def add_card(self, card):
-        print(json_loads(card))
         self.cards.append(card)
         self.value += values[json_loads(card)['rank']]
         if json_loads(card)['rank'] == 'Ace':
