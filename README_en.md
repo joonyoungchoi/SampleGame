@@ -48,7 +48,7 @@ This sample SCORE implements the game 'BLACKJACK' with customized rules
 - Game is active for 30 blocks after game start time.
 - Participants remain after finalizing the game. Unless the chip balance of participant is lower than prize per game.
 
-### InGame rules
+### In-Game rules
 - Players can get the cards on their hand up to 5. 
 - Players can decide to fix their hand or not.
 - All prize will be sent to winner. Except 'Draw'(participants will get back the chips). 
@@ -60,7 +60,7 @@ This sample SCORE implements the game 'BLACKJACK' with customized rules
 - samplegame : BLACKJACK
 
 ### Class 
-- Samplegame : Classes which contains main logic for BLACKJACK
+- Samplegame : Class which contains main logic for BLACKJACK
   - Deck : Class which contains 52 cards as a list and information about deck
   - Card : Class which contains information about a card
   - Hand : Class which contains information about player's hand(card list).
