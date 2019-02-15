@@ -20,9 +20,11 @@ class TestSampleGame(IconIntegrateTestBase):
     CHIP_PROJECT = os.path.abspath(os.path.join(DIR_PATH, '../../chip'))
 
     def setUp(self):
+        print("---------------------setup-------------------------")
         super().setUp()
 
         self.icon_service = None
+        # self.icon_service = IconService(HTTPProvider("http://localhost:9000/api/v3"))
 
         self.test1_wallet = self._test1
         self.test2_wallet = self._wallet_array[0]
@@ -34,18 +36,23 @@ class TestSampleGame(IconIntegrateTestBase):
         params_for_chip = {
             'decimals': self.decimals
         }
+        # self._chip_score_address = 'cx20a25e2d114ee9c80ee45fca83911a663cf5ed22'
         self._chip_score_address = self._deploy_score(content=self.CHIP_PROJECT, params=params_for_chip)['scoreAddress']
 
         params_for_sample_game = {
             'token_address': self._chip_score_address
         }
+        # self._sample_game_score_address = 'cx4623bb6f4604e488a70b5c609c60fa860ed4e825'
         self._sample_game_score_address = self._deploy_score(params=params_for_sample_game)['scoreAddress']
 
         for wallet in wallet_list:
             self._transfer(wallet.get_address())
             self._mint_chips(_from=wallet, amount=11)
 
-    def _transfer(self, to: Address):
+    def tearDown(self):
+        print("---------------------------------------------------")
+
+    def _transfer(self, to: str):
         transaction = TransactionBuilder().from_(self.test1_wallet.get_address()) \
             .to(to) \
             .step_limit(10_000_000) \
@@ -269,11 +276,21 @@ class TestSampleGame(IconIntegrateTestBase):
 
     def test_score_update(self):
         # update SCORE
+        print('Update')
         tx_result = self._deploy_score(to=self._sample_game_score_address)
 
         self.assertEqual(self._sample_game_score_address, tx_result['scoreAddress'])
 
     def test_scenario1(self):
+        call = CallBuilder().from_(self.test1_wallet.get_address()) \
+            .to(self._sample_game_score_address) \
+            .method("show_game_room_list") \
+            .build()
+
+        # Sends the call request
+        response = self.process_call(call, self.icon_service)
+        print(response)
+
         tx_result_create_room = self._create_room(self.test1_wallet)
         self.assertTrue('status' in tx_result_create_room)
         self.assertEqual(1, tx_result_create_room['status'])
@@ -286,13 +303,23 @@ class TestSampleGame(IconIntegrateTestBase):
         self.assertTrue('status' in tx_result_create_room)
         self.assertEqual(0, tx_result_create_room['status'])
 
-    def test2_scenario2(self):
+        call = CallBuilder().from_(self.test1_wallet.get_address()) \
+            .to(self._sample_game_score_address) \
+            .method("show_game_room_list") \
+            .build()
+
+        # Sends the call request
+        response = self.process_call(call, self.icon_service)
+        print(response)
+
+    def test_scenario2(self):
 
         tx_result_create_room = self._create_room(self.test1_wallet)
         self.assertTrue('status' in tx_result_create_room)
         self.assertEqual(1, tx_result_create_room['status'])
 
         result_show_game_room_list = self._show_game_room_list(self.test1_wallet)
+        print(result_show_game_room_list)
         self.assertEqual(1, len(result_show_game_room_list))
 
         tx_result_join_room = self._join_room(self.test2_wallet, self.test1_wallet.get_address())
@@ -333,6 +360,9 @@ class TestSampleGame(IconIntegrateTestBase):
         self._create_room(self.test1_wallet)
         self._join_room(self.test2_wallet, self.test1_wallet.get_address())
 
+        result_show_game_room_list = self._show_game_room_list(self.test1_wallet)
+        print(result_show_game_room_list)
+
         tx_result_toggle_ready = self._toggle_ready(self.test1_wallet)
         self.assertTrue('status' in tx_result_toggle_ready)
         self.assertEqual(1, tx_result_toggle_ready['status'])
@@ -356,6 +386,10 @@ class TestSampleGame(IconIntegrateTestBase):
         tx_result_game_start = self._game_start(self.test1_wallet)
         self.assertTrue('status' in tx_result_game_start)
         self.assertEqual(1, tx_result_game_start['status'])
+
+        tx_result_game_start = self._game_start(self.test1_wallet)
+        self.assertTrue('status' in tx_result_game_start)
+        self.assertEqual(0, tx_result_game_start['status'])
 
         tx_result_escape = self._escape(self.test1_wallet)
         self.assertTrue('status' in tx_result_escape)

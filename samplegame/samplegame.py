@@ -103,10 +103,11 @@ class SampleGame(IconScoreBase):
         game_room_list = self._get_game_room_list()
 
         for game_room in game_room_list:
-            game_room_id = json_loads(game_room)['game_room_id']
-            creation_time = json_loads(game_room)['creation_time']
-            prize_per_game = json_loads(game_room)['prize_per_game']
-            participants = json_loads(game_room)['participants']
+            game_room_dict = json_loads(game_room)
+            game_room_id = game_room_dict['game_room_id']
+            creation_time = game_room_dict['creation_time']
+            prize_per_game = game_room_dict['prize_per_game']
+            participants = game_room_dict['participants']
             room_has_vacant_seat = "is Full" if len(participants) > 1 else "has a vacant seat"
             response.append(f"{game_room_id} : ({len(participants)} / 2). The room {room_has_vacant_seat}. Prize : {prize_per_game}. Creation time : {creation_time}")
 
@@ -211,6 +212,7 @@ class SampleGame(IconScoreBase):
         game_room_to_escape = GameRoom(Address.from_string(game_room_to_escape_dict['owner']), Address.from_string(game_room_to_escape_dict['game_room_id']),
                                        game_room_to_escape_dict['creation_time'], game_room_to_escape_dict['prize_per_game'],
                                        game_room_to_escape_dict['participants'], game_room_to_escape_dict['active'])
+
         if game_room_to_escape.active:
             revert("The game is not finalized yet.")
 
@@ -285,12 +287,12 @@ class SampleGame(IconScoreBase):
                              game_room_dict['prize_per_game'], game_room_dict['participants'], game_room_dict['active'])
         participants = game_room.participants
 
-        for participant in participants:
-            self._bet(_from=Address.from_string(participant), amount=game_room.prize_per_game)
-
         # Check the 'self.msg.sender' == game_room.owner
         if not self.msg.sender == game_room.owner:
             revert("Only owner of game room can start the game")
+
+        if game_room.active:
+            revert("The last game is still active and not finalized")
 
         # Check the number of participants
         if len(participants) < 2:
@@ -300,6 +302,9 @@ class SampleGame(IconScoreBase):
         for participant in participants:
             if not self._DDB_ready[Address.from_string(participant)]:
                 revert(f"{participant} is not ready to play game")
+
+        for participant in participants:
+            self._bet(_from=Address.from_string(participant), amount=game_room.prize_per_game)
 
         # Game start
         game_room.game_start()
@@ -401,26 +406,26 @@ class SampleGame(IconScoreBase):
         second_hand = Hand(second_hand_dict['cards'], second_hand_dict['value'], second_hand_dict['aces'], second_hand_dict['fix'])
 
         results = self._get_results()
+        loser = str
         if first_hand.value > 21 or second_hand.value > 21:
             chip.transfer(Address.from_string(first_participant), game_room.prize_per_game * 2) if second_hand.value > 21 else chip.transfer(Address.from_string(second_participant), game_room.prize_per_game * 2)
             results.put(f"{first_participant} wins against {second_participant}.") if second_hand.value > 21 else results.put(f"{second_participant} wins against {first_participant}.")
             loser = first_participant if first_hand.value > 21 else second_participant
-            if game_room.prize_per_game > chip.balanceOf(Address.from_string(loser)):
-                self._ban(game_room_id, Address.from_string(loser))
         elif first_hand.value > second_hand.value:
             chip.transfer(Address.from_string(first_participant), game_room.prize_per_game * 2)
             results.put(f"{first_participant} wins against {second_participant}.")
-            if game_room.prize_per_game > chip.balanceOf(Address.from_string(second_participant)):
-                self._ban(game_room_id, Address.from_string(second_participant))
+            loser = second_participant
         elif first_hand.value < second_hand.value:
             chip.transfer(Address.from_string(second_participant), game_room.prize_per_game * 2)
             results.put(f"{second_participant} wins against {first_participant}.")
-            if game_room.prize_per_game > chip.balanceOf(Address.from_string(first_participant)):
-                self._ban(game_room_id, Address.from_string(first_participant))
+            loser = first_participant
         else:
             chip.transfer(Address.from_string(first_participant), game_room.prize_per_game)
             chip.transfer(Address.from_string(second_participant), game_room.prize_per_game)
             results.put(f"Draw!! {first_participant}, {second_participant}.")
+
+        if game_room.prize_per_game > chip.balanceOf(Address.from_string(loser)):
+            self._ban(game_room_id, Address.from_string(loser))
 
     def _game_stop(self, game_room_id):
         game_room_dict = json_loads(self._DDB_game_room[game_room_id])
@@ -443,4 +448,4 @@ class SampleGame(IconScoreBase):
     def exchange(self, amount: int):
         chip = self.create_interface_score(self._VDB_token_address.get(), ChipInterface)
         chip.burn(amount)
-        self.icx.send(self.msg.sender, amount)
+        self.icx.transfer(self.msg.sender, amount)
