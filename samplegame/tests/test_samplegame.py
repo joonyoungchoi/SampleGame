@@ -1,15 +1,14 @@
 import os
 
+from iconsdk.builder.call_builder import CallBuilder
 from iconsdk.builder.transaction_builder import (
     DeployTransactionBuilder,
     CallTransactionBuilder,
     TransactionBuilder)
-from iconsdk.builder.call_builder import CallBuilder
 from iconsdk.libs.in_memory_zip import gen_deploy_data_content
 from iconsdk.signed_transaction import SignedTransaction
 from iconsdk.wallet.wallet import KeyWallet
 from iconservice import Address, json_loads
-
 from tbears.libs.icon_integrate_test import IconIntegrateTestBase, SCORE_INSTALL_ADDRESS
 
 DIR_PATH = os.path.abspath(os.path.dirname(__file__))
@@ -34,13 +33,13 @@ class TestSampleGame(IconIntegrateTestBase):
         # install SCORE
         self.decimals = 0
         params_for_chip = {
-            'decimals': self.decimals
+            '_decimals': self.decimals
         }
         # self._chip_score_address = 'cx20a25e2d114ee9c80ee45fca83911a663cf5ed22'
         self._chip_score_address = self._deploy_score(content=self.CHIP_PROJECT, params=params_for_chip)['scoreAddress']
 
         params_for_sample_game = {
-            'token_address': self._chip_score_address
+            '_tokenAddress': self._chip_score_address
         }
         # self._sample_game_score_address = 'cx4623bb6f4604e488a70b5c609c60fa860ed4e825'
         self._sample_game_score_address = self._deploy_score(params=params_for_sample_game)['scoreAddress']
@@ -94,7 +93,7 @@ class TestSampleGame(IconIntegrateTestBase):
     def _show_game_room_list(self, _from: KeyWallet):
         call = CallBuilder().from_(_from.get_address()) \
             .to(self._sample_game_score_address) \
-            .method("show_game_room_list") \
+            .method("showGameRoomList") \
             .build()
 
         # Sends the call request
@@ -104,7 +103,7 @@ class TestSampleGame(IconIntegrateTestBase):
     def _get_chip_balance(self, _from: KeyWallet):
         call = CallBuilder().from_(_from.get_address()) \
             .to(self._sample_game_score_address) \
-            .method("get_chip_balance") \
+            .method("getChipBalance") \
             .build()
 
         # Sends the call request
@@ -118,7 +117,7 @@ class TestSampleGame(IconIntegrateTestBase):
             .step_limit(10_000_000) \
             .nid(3) \
             .nonce(100) \
-            .method("create_room") \
+            .method("createRoom") \
             .params('') \
             .build()
 
@@ -133,8 +132,8 @@ class TestSampleGame(IconIntegrateTestBase):
             .step_limit(10_000_000) \
             .nid(3) \
             .nonce(100) \
-            .method("join_room") \
-            .params({'game_room_id': f'{_game_room_id}'}) \
+            .method("joinRoom") \
+            .params({'_gameRoomId': f'{_game_room_id}'}) \
             .build()
 
         signed_transaction_join_room = SignedTransaction(transaction_join_room, _from)
@@ -163,7 +162,7 @@ class TestSampleGame(IconIntegrateTestBase):
             .step_limit(10_000_000) \
             .nid(3) \
             .nonce(100) \
-            .method("toggle_ready") \
+            .method("toggleReady") \
             .params({}) \
             .build()
 
@@ -178,7 +177,7 @@ class TestSampleGame(IconIntegrateTestBase):
             .step_limit(10_000_000) \
             .nid(3) \
             .nonce(100) \
-            .method("game_start") \
+            .method("gameStart") \
             .params({}) \
             .build()
 
@@ -219,10 +218,10 @@ class TestSampleGame(IconIntegrateTestBase):
         tx_result_fix = self.process_transaction(signed_transaction_fix, self.icon_service)
         return tx_result_fix
 
-    def _show_mine(self, _from: KeyWallet):
+    def _show_mine(self, _from: KeyWallet = KeyWallet.create()):
         call = CallBuilder().from_(_from.get_address()) \
             .to(self._sample_game_score_address) \
-            .method("show_mine") \
+            .method("showMine") \
             .build()
 
         response = self.process_call(call, self.icon_service)
@@ -231,7 +230,7 @@ class TestSampleGame(IconIntegrateTestBase):
     def _get_results(self, _from: KeyWallet):
         call = CallBuilder().from_(_from.get_address()) \
             .to(self._sample_game_score_address) \
-            .method("get_results") \
+            .method("getResults") \
             .build()
 
         # Sends the call request
@@ -246,7 +245,7 @@ class TestSampleGame(IconIntegrateTestBase):
             .nid(3) \
             .value(amount) \
             .nonce(100) \
-            .method("mint_chips") \
+            .method("mintChips") \
             .params('') \
             .build()
 
@@ -284,7 +283,7 @@ class TestSampleGame(IconIntegrateTestBase):
     def test_scenario1(self):
         call = CallBuilder().from_(self.test1_wallet.get_address()) \
             .to(self._sample_game_score_address) \
-            .method("show_game_room_list") \
+            .method("showGameRoomList") \
             .build()
 
         # Sends the call request
@@ -305,7 +304,7 @@ class TestSampleGame(IconIntegrateTestBase):
 
         call = CallBuilder().from_(self.test1_wallet.get_address()) \
             .to(self._sample_game_score_address) \
-            .method("show_game_room_list") \
+            .method("showGameRoomList") \
             .build()
 
         # Sends the call request
@@ -386,6 +385,7 @@ class TestSampleGame(IconIntegrateTestBase):
         tx_result_game_start = self._game_start(self.test1_wallet)
         self.assertTrue('status' in tx_result_game_start)
         self.assertEqual(1, tx_result_game_start['status'])
+        print(tx_result_game_start)
 
         tx_result_game_start = self._game_start(self.test1_wallet)
         self.assertTrue('status' in tx_result_game_start)

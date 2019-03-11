@@ -17,7 +17,7 @@ class ChipInterface(InterfaceScore):
         pass
 
     @interface
-    def burn(self, amount: int):
+    def burn(self, _amount: int):
         pass
 
     @interface
@@ -49,21 +49,21 @@ class SampleGame(IconScoreBase):
     _GAME_START_TIME = "game_start_time"
 
     @eventlog(indexed=1)
-    def Calculate(self, game_room_id: Address):
+    def Calculate(self, _gameRoomId: Address):
         pass
 
-    @eventlog()
-    def Hit(self, _from_address: Address, game_room_id: Address):
+    @eventlog
+    def Hit(self, _fromAddress: Address, _gameRoomId: Address):
         pass
 
-    @eventlog()
-    def Fix(self,  _from_address: Address, game_room_id: Address):
+    @eventlog
+    def Fix(self, _fromAddress: Address, _gameRoomId: Address):
         pass
 
-    def on_install(self, token_address: Address) -> None:
+    def on_install(self, _tokenAddress: Address) -> None:
         super().on_install()
-        if token_address.is_contract:
-            self._VDB_token_address.set(token_address)
+        if _tokenAddress.is_contract:
+            self._VDB_token_address.set(_tokenAddress)
         else:
             revert("Input params must be Contract Address")
 
@@ -88,9 +88,9 @@ class SampleGame(IconScoreBase):
     def _get_results(self):
         return ArrayDB(self._RESULTS, self._db, value_type=str)
 
-    def _bet(self, _from: Address, amount: int):
+    def _bet(self, bet_from: Address, amount: int):
         chip = self.create_interface_score(self._VDB_token_address.get(), ChipInterface)
-        chip.bet(_from, self.address, amount)
+        chip.bet(bet_from, self.address, amount)
 
     @external(readonly=True)
     def balanceOf(self) -> int:
@@ -98,7 +98,7 @@ class SampleGame(IconScoreBase):
         return chip.balanceOf(self.msg.sender)
 
     @external(readonly=True)
-    def show_game_room_list(self) -> list:
+    def showGameRoomList(self) -> list:
         response = []
         game_room_list = self._get_game_room_list()
 
@@ -114,18 +114,18 @@ class SampleGame(IconScoreBase):
         return response
 
     @external
-    def create_room(self, prize_per_game: int = 10):
+    def createRoom(self, _prizePerGame: int = 10):
         # Check whether 'self.msg.sender' is now participating to game room or not
         if self._DDB_in_game_room[self.msg.sender] is not None:
             revert("You already joined to another room")
 
         # Check whether the chip balance of 'self.msg.sender' exceeds the prize_per_game or not
         chip = self.create_interface_score(self._VDB_token_address.get(), ChipInterface)
-        if chip.balanceOf(self.msg.sender) < prize_per_game:
+        if chip.balanceOf(self.msg.sender) < _prizePerGame:
             revert("Set the prize not to exceed your balance")
 
         # Create the game room & Get in to it & Set the prize_per_game value
-        game_room = GameRoom(self.msg.sender, self.msg.sender, self.block.height, prize_per_game)
+        game_room = GameRoom(self.msg.sender, self.msg.sender, self.block.height, _prizePerGame)
         game_room.join(self.msg.sender)
         self._DDB_game_room[self.msg.sender] = str(game_room)
 
@@ -158,16 +158,16 @@ class SampleGame(IconScoreBase):
             self._get_game_room_list().put(game_room)
 
     @external
-    def join_room(self, game_room_id: Address):
+    def joinRoom(self, _gameRoomId: Address):
         # Check whether the game room with game_room_id is existent or not
-        if self._DDB_game_room[game_room_id] is "":
-            revert(f"There is no game room which has equivalent id to {game_room_id}")
+        if self._DDB_game_room[_gameRoomId] is "":
+            revert(f"There is no game room which has equivalent id to {_gameRoomId}")
 
         # Check the participant is already joined to another game_room
         if self._DDB_in_game_room[self.msg.sender] is not None:
             revert(f"You already joined to another game room : {self._DDB_in_game_room[self.msg.sender]}")
 
-        game_room_dict = json_loads(self._DDB_game_room[game_room_id])
+        game_room_dict = json_loads(self._DDB_game_room[_gameRoomId])
         game_room = GameRoom(Address.from_string(game_room_dict['owner']), Address.from_string(game_room_dict['game_room_id']), game_room_dict['creation_time'],
                              game_room_dict['prize_per_game'], game_room_dict['participants'], game_room_dict['active'])
         game_room_list = self._get_game_room_list()
@@ -175,16 +175,16 @@ class SampleGame(IconScoreBase):
         # Check the chip balance of 'self.msg.sender' before getting in
         chip = self.create_interface_score(self._VDB_token_address.get(), ChipInterface)
         if chip.balanceOf(self.msg.sender) < game_room.prize_per_game:
-            revert(f"Not enough Chips to join this game room {game_room_id}. Require {game_room.prize_per_game} chips")
+            revert(f"Not enough Chips to join this game room {_gameRoomId}. Require {game_room.prize_per_game} chips")
 
         # Check the game room's participants. Max : 2
         if len(game_room.participants) > 1:
-            revert(f"Full : Can not join to game room {game_room_id}")
+            revert(f"Full : Can not join to game room {_gameRoomId}")
 
         # Get in to the game room
         game_room.join(self.msg.sender)
-        self._DDB_in_game_room[self.msg.sender] = game_room_id
-        self._DDB_game_room[game_room_id] = str(game_room)
+        self._DDB_in_game_room[self.msg.sender] = _gameRoomId
+        self._DDB_game_room[_gameRoomId] = str(game_room)
 
         game_room_index_gen = (index for index in range(len(game_room_list)) if game_room.game_room_id == Address.from_string(json_loads(game_room_list[index])['game_room_id']))
 
@@ -266,12 +266,12 @@ class SampleGame(IconScoreBase):
                 pass
 
     @external(readonly=True)
-    def get_chip_balance(self) -> int:
+    def getChipBalance(self) -> int:
         chip = self.create_interface_score(self._VDB_token_address.get(), ChipInterface)
         return chip.balanceOf(self.msg.sender)
 
     @external
-    def toggle_ready(self):
+    def toggleReady(self):
         if self._DDB_in_game_room[self.msg.sender] is None:
             revert("Enter the game room first.")
         if self._DDB_ready[self.msg.sender]:
@@ -280,7 +280,7 @@ class SampleGame(IconScoreBase):
             self._DDB_ready[self.msg.sender] = True
 
     @external
-    def game_start(self):
+    def gameStart(self):
         game_room_id = self._DDB_in_game_room[self.msg.sender]
         game_room_dict = json_loads(self._DDB_game_room[game_room_id])
         game_room = GameRoom(Address.from_string(game_room_dict['owner']), Address.from_string(game_room_dict['game_room_id']), game_room_dict['creation_time'],
@@ -304,7 +304,7 @@ class SampleGame(IconScoreBase):
                 revert(f"{participant} is not ready to play game")
 
         for participant in participants:
-            self._bet(_from=Address.from_string(participant), amount=game_room.prize_per_game)
+            self._bet(bet_from=Address.from_string(participant), amount=game_room.prize_per_game)
 
         # Game start
         game_room.game_start()
@@ -316,7 +316,7 @@ class SampleGame(IconScoreBase):
             self._DDB_ready[Address.from_string(participant)] = False
 
     @external(readonly=True)
-    def show_mine(self) -> str:
+    def showMine(self) -> str:
         hand = self._DDB_hand[self.msg.sender]
         return hand
 
@@ -406,7 +406,7 @@ class SampleGame(IconScoreBase):
         second_hand = Hand(second_hand_dict['cards'], second_hand_dict['value'], second_hand_dict['aces'], second_hand_dict['fix'])
 
         results = self._get_results()
-        loser = str
+        loser = ""
         if first_hand.value > 21 or second_hand.value > 21:
             chip.transfer(Address.from_string(first_participant), game_room.prize_per_game * 2) if second_hand.value > 21 else chip.transfer(Address.from_string(second_participant), game_room.prize_per_game * 2)
             results.put(f"{first_participant} wins against {second_participant}.") if second_hand.value > 21 else results.put(f"{second_participant} wins against {first_participant}.")
@@ -424,7 +424,7 @@ class SampleGame(IconScoreBase):
             chip.transfer(Address.from_string(second_participant), game_room.prize_per_game)
             results.put(f"Draw!! {first_participant}, {second_participant}.")
 
-        if game_room.prize_per_game > chip.balanceOf(Address.from_string(loser)):
+        if loser != "" and game_room.prize_per_game > chip.balanceOf(Address.from_string(loser)):
             self._ban(game_room_id, Address.from_string(loser))
 
     def _game_stop(self, game_room_id):
@@ -435,12 +435,12 @@ class SampleGame(IconScoreBase):
         self._DDB_game_room[game_room_id] = str(game_room)
 
     @external(readonly=True)
-    def get_results(self) -> list:
+    def getResults(self) -> list:
         return list(self._get_results())
 
     @external
     @payable
-    def mint_chips(self):
+    def mintChips(self):
         chip = self.create_interface_score(self._VDB_token_address.get(), ChipInterface)
         chip.mint(self.msg.value)
 
